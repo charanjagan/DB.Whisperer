@@ -1,18 +1,17 @@
-"""Ollama client. Uses urllib so the package stays dependency-light."""
+"""SQL generation prompts and cleanup. The actual model call is delegated to
+llm_backend.get_backend(), which is what makes LLM_BACKEND=local (the bundled
+GGUF) a drop-in swap for LLM_BACKEND=ollama (this module's original direct
+HTTP client) without anything in this file changing per call site."""
 
-import json
 import re
-import urllib.error
-import urllib.request
 from typing import List, Optional, Tuple
 
 import pandas as pd
 import pyodbc
 
 from .dialects import DEFAULT_DIALECT, get_dialect
+from .llm_backend import OLLAMA_URL, BackendError, get_backend
 from .sql_executor import UnsafeQueryError, run_query
-
-OLLAMA_URL = "http://localhost:11434/api/generate"
 
 # sqlcoder (Phase 1's model) is defog's Postgres model. It reads a schema well
 # but writes Postgres: ILIKE, to_char(), NULLS LAST, none of which SQL Server
@@ -134,45 +133,19 @@ def complete(
     timeout: int = 300,
     temperature: float = 0.0,
 ) -> str:
-    """Send a raw prompt to Ollama and return the raw completion text.
+    """Send a raw prompt to the active LLM backend and return the completion text.
 
-    Shared by SQL generation, SQL repair, and table selection.
+    Shared by SQL generation, SQL repair, table selection, and summarisation.
+    `model`/`url` only apply when the active backend is Ollama (see
+    app_config.LLM_BACKEND); the local GGUF backend ignores both and always
+    loads the one bundled model.
     """
-    payload = {
-        "model": model,
-        "prompt": prompt,
-        "stream": False,
-        "options": {"temperature": temperature},
-    }
-
-    request = urllib.request.Request(
-        url,
-        data=json.dumps(payload).encode("utf-8"),
-        headers={"Content-Type": "application/json"},
-        method="POST",
-    )
-
     try:
-        with urllib.request.urlopen(request, timeout=timeout) as response:
-            body = json.loads(response.read().decode("utf-8"))
-    except TimeoutError as exc:
-        # Not a URLError subclass, so it needs its own arm.
-        raise LLMError(
-            f"Ollama did not respond within {timeout}s. A large schema on a 7B "
-            f"model is slow on first call while weights load; retry, or trim the "
-            f"schema passed as context."
-        ) from exc
-    except urllib.error.URLError as exc:
-        raise LLMError(
-            f"Could not reach Ollama at {url} ({exc}). Is `ollama serve` running?"
-        ) from exc
-    except json.JSONDecodeError as exc:
-        raise LLMError(f"Ollama returned malformed JSON: {exc}") from exc
-
-    if "error" in body:
-        raise LLMError(f"Ollama error: {body['error']}")
-
-    return body.get("response", "")
+        return get_backend(model=model, url=url).generate(
+            prompt, temperature=temperature, timeout=timeout
+        )
+    except BackendError as exc:
+        raise LLMError(str(exc)) from exc
 
 
 def generate_sql(

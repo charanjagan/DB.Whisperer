@@ -225,6 +225,34 @@ class ConnectWorker(_BaseWorker):
             self._fail(str(exc))
 
 
+class ModelLoadWorker(_BaseWorker):
+    """Preloads the bundled GGUF model on startup so llama-cpp-python's
+    several-second load happens behind a "Loading model…" message instead of
+    stalling the first question the user asks.
+
+    A no-op when LLM_BACKEND=ollama: Ollama manages its own model loading
+    server-side, so there is nothing here to preload.
+    """
+
+    done = Signal()
+
+    def run(self) -> None:
+        from nl2sql.app_config import LLM_BACKEND
+
+        if LLM_BACKEND != "local":
+            self.done.emit()
+            return
+
+        self.progress.emit("Loading model…")
+        try:
+            from nl2sql.llm_backend import preload_local_backend
+
+            preload_local_backend()
+        except Exception as exc:
+            return self._fail(f"Could not load the local model: {exc}")
+        self.done.emit()
+
+
 class SelectDatabaseWorker(_BaseWorker):
     """Switch database, provisioning read-only access if this one is new."""
 

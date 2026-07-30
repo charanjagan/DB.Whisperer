@@ -24,6 +24,17 @@ from .llm_client import DEFAULT_MODEL
 APP_NAME = "DB.Whisperer"
 CONFIG_FILENAME = "config.json"
 
+# Which LLM backend llm_client.complete() (and everything built on it) uses:
+#   "local"  — default, matches the packaged build. Loads the bundled GGUF in
+#              models/ via llama-cpp-python: no server process, no network
+#              call, works fully offline. See README.md's "Local model" section.
+#   "ollama" — dev/testing. Hits a locally running `ollama serve`, fast to
+#              iterate with since swapping models is `ollama pull`.
+# A deployment flag, not a per-user setting, so it lives here as a module
+# constant rather than on AppConfig / the Settings dialog. Override with the
+# LLM_BACKEND env var (e.g. LLM_BACKEND=ollama during development).
+LLM_BACKEND = os.environ.get("LLM_BACKEND", "local").strip().lower()
+
 
 def config_dir() -> Path:
     """Per-user app data directory: %APPDATA% on Windows, ~/.config elsewhere."""

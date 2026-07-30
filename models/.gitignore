@@ -1,0 +1,3 @@
+# The GGUF weight file is ~4-5GB and does not belong in git. Download it per
+# README.md's "Local model" section; this directory is where it goes.
+*.gguf

@@ -9,6 +9,10 @@ blow the context window, take minutes on a 7B model, and buy nothing — the sha
 of the answer is visible in the first twenty rows and the row count, and the row
 count is stated separately so the model can still say "of 31,465 orders" without
 having seen them.
+
+`complete()` (imported below) already routes through llm_backend.get_backend(),
+so this module needs no direct backend awareness to work under both
+LLM_BACKEND=ollama and LLM_BACKEND=local.
 """
 
 import pandas as pd

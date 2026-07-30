@@ -43,7 +43,7 @@ from nl2sql.session import Session
 from .assistant_panel import AssistantPanel
 from .generator_panel import GeneratorPanel
 from .settings_dialog import SettingsDialog
-from .workers import AssistantWorker, GeneratorWorker, SchemaFetchWorker
+from .workers import AssistantWorker, GeneratorWorker, ModelLoadWorker, SchemaFetchWorker
 
 MODE_ASSISTANT = "Full Assistant"
 MODE_GENERATOR = "Query Generator"
@@ -78,6 +78,7 @@ class MainWindow(QMainWindow):
         self.session = Session(self.config)
         self.history: List[HistoryEntry] = []
         self._worker = None
+        self._model_worker = None
 
         self._build_ui()
         self._build_menu()
@@ -91,6 +92,8 @@ class MainWindow(QMainWindow):
                 f"Last used {self.config.database} on {self.config.server}. "
                 f"Open Settings to connect."
             )
+
+        self._start_model_load()
 
     # ------------------------------------------------------------------- build
 
@@ -252,6 +255,41 @@ class MainWindow(QMainWindow):
         if self.mode == MODE_GENERATOR and self.generator_panel.use_connected.isChecked():
             self._fetch_schema()
 
+    # ------------------------------------------------------------- model load
+
+    def _start_model_load(self) -> None:
+        """Preload the bundled GGUF up front, behind a visible message, rather
+        than let llama-cpp-python's several-second load happen silently during
+        the first question. No-op when LLM_BACKEND=ollama — Ollama manages its
+        own model loading server-side, so there is nothing to preload here and
+        no reason to flash a "Loading model…" message that would not be true.
+        """
+        from nl2sql.app_config import LLM_BACKEND
+
+        if LLM_BACKEND != "local":
+            return
+
+        self._pending_status = self.status_label.text()
+        self.run_button.setEnabled(False)
+        self.status_label.setText("Loading model…")
+
+        worker = ModelLoadWorker(parent=self)
+        worker.progress.connect(self.status_label.setText)
+        worker.done.connect(self._model_loaded)
+        worker.failed.connect(self._model_load_failed)
+        self._model_worker = worker
+        worker.start()
+
+    def _model_loaded(self) -> None:
+        self.run_button.setEnabled(True)
+        self.status_label.setText(self._pending_status)
+
+    def _model_load_failed(self, message: str) -> None:
+        # `message` already reads "Could not load the local model: ..." — see
+        # ModelLoadWorker._fail.
+        self.run_button.setEnabled(True)
+        self.status_label.setText(message)
+
     def _update_status(self) -> None:
         if self.session.ready:
             self.status_label.setText(
@@ -277,6 +315,11 @@ class MainWindow(QMainWindow):
             # a second or two, and a click landing in that window did nothing at
             # all while the old result sat in the output box looking like a new one.
             self.status_label.setText("Still finishing the last step — try again in a moment.")
+            return
+        if self._model_worker is not None and self._model_worker.isRunning():
+            # Run is disabled while this runs too, but the Ctrl+Return shortcut
+            # bypasses the button, so the guard needs to live here as well.
+            self.status_label.setText("Still loading the model — try again in a moment.")
             return
 
         self._remember(question)

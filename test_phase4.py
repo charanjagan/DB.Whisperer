@@ -78,11 +78,15 @@ def pump(ms=120):
     loop.exec()
 
 
-def wait_for_worker(window, timeout=420):
+def wait_for_worker(window, timeout=900):
     """Block until the window's current worker finishes, keeping the UI alive.
 
     A plain QThread.wait() would freeze the event loop and the queued signals
     carrying the result would never be delivered -- so this pumps instead.
+
+    900s (was 420s pre-Phase 5) because LLM_BACKEND=local runs the 7B model on
+    CPU with no server-side batching to rely on; a schema-heavy question can
+    take several times longer than the same call against Ollama.
     """
     deadline = time.time() + timeout
     while window._worker is not None and window._worker.isRunning():
@@ -90,6 +94,21 @@ def wait_for_worker(window, timeout=420):
         if time.time() > deadline:
             return False
     pump(250)  # let the done signal land and the panel repaint
+    return True
+
+
+def wait_for_model_load(window, timeout=300):
+    """Block until the startup ModelLoadWorker (Phase 5) finishes, if it ran.
+
+    MainWindow.__init__ kicks this off itself when LLM_BACKEND=local, and Run
+    refuses to start while it is in flight -- so the driver has to wait it out
+    up front, the same way it waits out any other worker.
+    """
+    deadline = time.time() + timeout
+    while window._model_worker is not None and window._model_worker.isRunning():
+        pump(150)
+        if time.time() > deadline:
+            return False
     return True
 
 
@@ -274,6 +293,9 @@ def main():
     window.session.config = window.config
     window.show()
     pump(200)
+
+    if not wait_for_model_load(window):
+        print("  (model load timed out)")
 
     results = {}
     try:
