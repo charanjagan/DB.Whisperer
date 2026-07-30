@@ -15,13 +15,13 @@
 <div align="center">
 
 ```
-╭─ charan@mr.zeus:~/DB.Whisperer ───────────────────────────╮
+╭─ charan@mr.zeus:~/DB.Whisperer ────────────────────────────╮
 │                                                            │
 │  $ ./dbwhisperer --info                                    │
 │                                                            │
 │  ► A native desktop app that turns English into SQL.       │
 │  ► Runs fully offline. Your data never leaves your machine.│
-│  ► Built with Claude Code, one phase at a time.             │
+│  ► Built with Claude Code, one phase at a time.            │
 │                                                            │
 │  $ cat status.txt                                          │
 │                                                            │
@@ -70,15 +70,15 @@
 ## 🧠 How It Works
 
 ```
-┌──────────────┐     ┌───────────────────────────────────────────────────┐
-│  PySide6 UI  │ ──▶ │  schema introspection (filter 74 tables → ~4-12)   │
-│ (native app) │     │           │                                       │
-└──────────────┘     │           ▼                                       │
+┌──────────────┐     ┌────────────────────────────────────────────────────┐
+│  PySide6 UI  │ ──▶ │  schema introspection (filter 74 tables → ~4-12)  │
+│ (native app) │     │           │                                        │
+└──────────────┘     │           ▼                                        │ 
                      │   local LLM (qwen2.5-coder, GGUF or Ollama)        │
-                     │           │                                       │
-                     │           ▼                                       │
+                     │           │                                        │
+                     │           ▼                                        │
                      │   generate SQL ── dialect: T-SQL / Postgres / MySQL│
-                     └───────────┬─────────────────────┬─────────────────┘
+                     └───────────┬─────────────────────┬──────────────────┘
                                  │                     │
                         Full Assistant           Query Generator
                                  │                     │
@@ -86,9 +86,9 @@
                    validator (21 unsafe keywords)   shown as text,
                                  │                  never executed
                                  ▼
-                   execute on read-only db_datareader login ◀───┐
-                                 │                               │
-                          (SQL error) ─────── retry, up to 2× ───┘
+                   execute on read-only db_datareader login ◀────┐
+                                 │                                │
+                          (SQL error) ─────── retry, up to 2× ────┘
                                  │
                                  ▼
                    chart + plain-English summary ──▶ back to UI
