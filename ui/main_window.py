@@ -48,7 +48,7 @@ from .workers import AssistantWorker, GeneratorWorker, ModelLoadWorker, SchemaFe
 MODE_ASSISTANT = "Full Assistant"
 MODE_GENERATOR = "Query Generator"
 
-_MUTED = "#898781"
+_MUTED = "#8A8375"
 
 
 class HistoryEntry(NamedTuple):
@@ -140,6 +140,10 @@ class MainWindow(QMainWindow):
         mode_row = QHBoxLayout()
         self.assistant_radio = QRadioButton(MODE_ASSISTANT)
         self.generator_radio = QRadioButton(MODE_GENERATOR)
+        # Rendered as pill buttons rather than radio dots -- see ui/theme.py's
+        # stylesheet(). Must be set before the widget is first shown.
+        self.assistant_radio.setProperty("role", "pill")
+        self.generator_radio.setProperty("role", "pill")
         self.assistant_radio.setChecked(True)
         self.mode_group = QButtonGroup(self)
         self.mode_group.addButton(self.assistant_radio, 0)
@@ -171,6 +175,7 @@ class MainWindow(QMainWindow):
         run_row.addWidget(self.status_label, 1)
         self.run_button = QPushButton("Run")
         self.run_button.setMinimumWidth(110)
+        self.run_button.setProperty("role", "primary")
         self.run_button.setDefault(True)
         self.run_button.clicked.connect(self.run)
         run_row.addWidget(self.run_button)

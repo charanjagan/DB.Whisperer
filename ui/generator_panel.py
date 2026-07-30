@@ -29,7 +29,7 @@ from PySide6.QtWidgets import (
     QWidget,
 )
 
-_MUTED = "#898781"
+_MUTED = "#8A8375"
 _ERROR = "#d03b3b"
 
 # A schema far past this is mostly context the model cannot use anyway, and it

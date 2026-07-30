@@ -49,14 +49,19 @@ class Theme(NamedTuple):
 
 
 LIGHT = Theme(
-    surface="#fcfcfb",
-    accent="#2a78d6",
-    ink="#0b0b0b",
-    muted="#898781",
-    grid="#e1e0d9",
-    baseline="#c3c2b7",
-    series=("#2a78d6", "#008300", "#e87ba4", "#eda100",
-            "#1baf7a", "#eb6834", "#4a3aa7", "#e34948"),
+    # Cream/terracotta visual theme (see ui/theme.py's PAGE_BG/CARD_BG/etc for
+    # the widget-side palette this matches). Chart sits inside the assistant
+    # panel's white card, so its own surface is the card white, not the page
+    # cream -- otherwise the chart would show as a mismatched rectangle inside
+    # its own frame instead of reading as part of it.
+    surface="#FFFFFF",
+    accent="#C96442",
+    ink="#3A3530",
+    muted="#8A8375",
+    grid="#E8E1D3",
+    baseline="#D9CFC0",
+    series=("#C96442", "#D98C6B", "#E0B79E", "#E8CBB8",
+            "#B5754F", "#8C6D5A", "#A68A6B", "#6B5B4D"),
 )
 
 DARK = Theme(

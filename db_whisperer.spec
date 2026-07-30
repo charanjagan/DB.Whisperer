@@ -49,6 +49,14 @@ if not model_file.exists():
     )
 datas += [(str(model_file), "models")]
 
+# The app icon: bundled as a sibling `assets/` folder so main.py's
+# QApplication.setWindowIcon() can find it at runtime in the frozen build the
+# same way it does when run from source, and also passed to EXE(icon=...)
+# below so the exe file itself (taskbar-when-pinned, Explorer, Start Menu
+# tile) carries it too -- those are two independent things Windows shows.
+app_icon = project_root / "assets" / "app_icon.ico"
+datas += [(str(app_icon), "assets")]
+
 a = Analysis(
     ["main.py"],
     pathex=[str(project_root)],
@@ -81,6 +89,7 @@ exe = EXE(
     target_arch=None,
     codesign_identity=None,
     entitlements_file=None,
+    icon=str(app_icon),
     # Pre-6.0 flat layout: exe, DLLs, and models/ all sit directly in
     # dist/DB.Whisperer/ instead of nested under a dist/DB.Whisperer/_internal/
     # subfolder. Requested explicitly so the model file reads as "a separate

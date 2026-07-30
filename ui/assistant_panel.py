@@ -31,7 +31,7 @@ from .workers import AssistantResult
 # summary is the one line of real prose in the window, and setting it to
 # near-black made it invisible against a dark Qt palette. It now inherits the
 # palette's text colour, which is correct in both themes by construction.
-_MUTED = "#898781"
+_MUTED = "#8A8375"
 _ERROR = "#d03b3b"
 
 
@@ -65,7 +65,7 @@ class AssistantPanel(QWidget):
         palette = THEMES[chart_theme()]
         self.chart_frame.setStyleSheet(
             f"QFrame {{ background: {palette.surface}; border: 1px solid {palette.grid}; "
-            f"border-radius: 6px; }}"
+            f"border-radius: 14px; }}"
         )
         self.chart_frame.setSizePolicy(QSizePolicy.Expanding, QSizePolicy.Expanding)
         self.chart_layout = QVBoxLayout(self.chart_frame)
@@ -78,9 +78,10 @@ class AssistantPanel(QWidget):
 
         # --- summary ----------------------------------------------------------
         self.summary = QLabel("")
+        self.summary.setObjectName("summaryBox")
         self.summary.setWordWrap(True)
         self.summary.setTextInteractionFlags(Qt.TextSelectableByMouse)
-        self.summary.setStyleSheet("font-size: 14px; padding: 4px 2px;")
+        self.summary.setStyleSheet("font-size: 14px;")
         layout.addWidget(self.summary)
 
         # --- the SQL, folded away --------------------------------------------

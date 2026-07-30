@@ -67,7 +67,7 @@ class SettingsDialog(QDialog):
 
         hint = QLabel(f"Settings are saved to {config_path()}")
         hint.setWordWrap(True)
-        hint.setStyleSheet("color: #898781; font-size: 11px;")
+        hint.setStyleSheet("color: #8A8375; font-size: 11px;")
         layout.addWidget(hint)
 
         buttons = QDialogButtonBox(QDialogButtonBox.Ok | QDialogButtonBox.Cancel)
@@ -104,10 +104,11 @@ class SettingsDialog(QDialog):
         # keeping it that way means it needs no protection beyond the filesystem.
         note = QLabel("The password is kept for this session only and is never written to the config file.")
         note.setWordWrap(True)
-        note.setStyleSheet("color: #898781; font-size: 11px;")
+        note.setStyleSheet("color: #8A8375; font-size: 11px;")
         form.addRow("", note)
 
         self.connect_button = QPushButton("Connect")
+        self.connect_button.setProperty("role", "primary")
         self.connect_button.clicked.connect(self._connect)
         form.addRow("", self.connect_button)
         return group
@@ -128,7 +129,7 @@ class SettingsDialog(QDialog):
             "Queries never run as your admin login."
         )
         note.setWordWrap(True)
-        note.setStyleSheet("color: #898781; font-size: 11px;")
+        note.setStyleSheet("color: #8A8375; font-size: 11px;")
         box.addWidget(note)
         return group
 
@@ -146,7 +147,7 @@ class SettingsDialog(QDialog):
             "because it executes what it generates."
         )
         note.setWordWrap(True)
-        note.setStyleSheet("color: #898781; font-size: 11px;")
+        note.setStyleSheet("color: #8A8375; font-size: 11px;")
         box.addWidget(note)
         return group
 
@@ -197,7 +198,7 @@ class SettingsDialog(QDialog):
     def _say(self, message: str, error: bool = False) -> None:
         self.status.setText(message)
         self.status.setStyleSheet(
-            "color: #d03b3b; font-size: 12px;" if error else "color: #52514e; font-size: 12px;"
+            "color: #d03b3b; font-size: 12px;" if error else "color: #3A3530; font-size: 12px;"
         )
 
     # --------------------------------------------------------------- actions
