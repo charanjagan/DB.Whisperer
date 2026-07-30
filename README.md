@@ -21,7 +21,7 @@
 │                                                            │
 │  ► A native desktop app that turns English into SQL.       │
 │  ► Runs fully offline. Your data never leaves your machine.│
-│  ► Built with Claude Code, one phase at a time.            │
+│  ► Built with Claude Code, one phase at a time.             │
 │                                                            │
 │  $ cat status.txt                                          │
 │                                                            │
@@ -70,18 +70,42 @@
 ## 🧠 How It Works
 
 ```
-┌──────────────┐       ┌────────────────────────────────────────┐      ┌──────────────┐
-│  PySide6 UI  │ ───▶  │          Orchestration Layer          │ ───▶ │  SQL Server  │
-│ (native app) │       │                                        │      │  (your data) │
-└──────────────┘       │  schema introspection → prompt builder │      └──────────────┘
-                       │  → local LLM (qwen2.5-coder, GGUF)     │
-                       │  → SQL validator (read-only guard)     │
-                       │  → chart + summary generator           │
-                       └────────────────────────────────────────┘
-                            │                             │
-                     Full Assistant                Query Generator
-                (executes + visualizes)       (SQL text only, never runs)
+┌──────────────┐     ┌───────────────────────────────────────────────────┐
+│  PySide6 UI  │ ──▶ │  schema introspection (filter 74 tables → ~4-12)   │
+│ (native app) │     │           │                                       │
+└──────────────┘     │           ▼                                       │
+                     │   local LLM (qwen2.5-coder, GGUF or Ollama)        │
+                     │           │                                       │
+                     │           ▼                                       │
+                     │   generate SQL ── dialect: T-SQL / Postgres / MySQL│
+                     └───────────┬─────────────────────┬─────────────────┘
+                                 │                     │
+                        Full Assistant           Query Generator
+                                 │                     │
+                                 ▼                     ▼
+                   validator (21 unsafe keywords)   shown as text,
+                                 │                  never executed
+                                 ▼
+                   execute on read-only db_datareader login ◀───┐
+                                 │                               │
+                          (SQL error) ─────── retry, up to 2× ───┘
+                                 │
+                                 ▼
+                   chart + plain-English summary ──▶ back to UI
+                                 │
+                                 ▼
+                          ┌─────────────┐
+                          │  SQL Server │◀── separate admin/Windows-auth
+                          │ (your data) │    connection lists databases
+                          └─────────────┘    and grants the read-only login
 ```
+
+Both modes share one LLM call end to end — the backend (bundled GGUF vs.
+dev-time Ollama) is a single swappable seam behind `llm_client.complete()`,
+not duplicated per mode. They diverge right after SQL generation: Full
+Assistant validates, executes, charts, and summarises; Query Generator
+stops at the generated SQL text, since the app holds no connection to run
+PostgreSQL or MySQL against in the first place.
 
 ---
 
@@ -99,21 +123,42 @@ pyodbc · pandas · matplotlib · SQL Server 2025 · Claude Code
 ```
 ► Local LLM over cloud API    — free, private, offline. Costs speed:
                                  CPU-only inference runs ~2x slower
-                                 than a cloud/Ollama equivalent.
+                                 than a cloud/Ollama equivalent. No
+                                 GPU offload is configured on purpose —
+                                 it's the tradeoff that keeps the app
+                                 running on any machine, not just one
+                                 with a capable GPU.
 
 ► qwen2.5-coder over sqlcoder — sqlcoder is Postgres-trained and kept
                                  emitting ILIKE / to_char() against
-                                 T-SQL. qwen2.5-coder got the dialect
-                                 right from the first try.
+                                 T-SQL, and answered "which tables are
+                                 relevant" with a SELECT instead of a
+                                 list. qwen2.5-coder got the dialect
+                                 and the instruction-following right.
 
-► Read-only SQL login         — the actual security boundary. The SQL
-                                 validator is defense-in-depth, not a
-                                 substitute for real DB permissions.
+► Read-only SQL login         — the actual security boundary. A SQL
+                                 login scoped to db_datareader and
+                                 nothing else runs every generated
+                                 query, so a write that slips past the
+                                 validator is still refused by SQL
+                                 Server itself. The validator (21
+                                 blocked keywords: DML/DDL/DCL, EXEC,
+                                 OPENROWSET/OPENQUERY, WAITFOR) is
+                                 defense-in-depth, not a substitute —
+                                 it's a regex pass over a string the
+                                 LLM wrote, and any such pass can be
+                                 fooled.
 
 ► Schema filtering            — AdventureWorks' 74 tables would blow
                                  past what a 7B model can reason over
-                                 cleanly. Filtering to relevant tables
-                                 cut context by ~19x before generation.
+                                 cleanly. A cheap preliminary LLM call
+                                 picks the relevant tables (backstopped
+                                 by a lexical name match and a foreign-
+                                 key bridge step for joins the question
+                                 never names), cutting context to the
+                                 ~4 tables a typical question actually
+                                 needs — roughly 19x — before the real
+                                 generation call.
 ```
 
 ---
@@ -121,11 +166,25 @@ pyodbc · pandas · matplotlib · SQL Server 2025 · Claude Code
 ## ⚠️ Known Limitations
 
 ```
-► CPU-only inference is noticeably slower than a cloud LLM call
-► Assumes a SQL Server instance is already installed and running
+► CPU-only inference is noticeably slower than a cloud LLM call —
+  one question (table selection + SQL generation + summary are all
+  separate model calls) takes on the order of a minute or two.
+► Assumes a SQL Server instance is already installed and running.
+  Local/single-machine SQL Server is the tested setup; not exercised
+  against a remote or high-availability topology.
 ► First-time setup (creating the read-only login) needs an account
   with admin rights on that SQL Server — automatic on a personal
-  machine, may need a DBA on a locked-down corporate instance
+  machine, may need a DBA on a locked-down corporate instance.
+► The default read-only login password is a fixed value in source
+  (nl2sql/db_setup.py, setup_readonly_user.sql), overridable via
+  NL2SQL_READONLY_PASSWORD. It only ever grants db_datareader, but
+  rotate it via the env var before pointing this at anything real.
+► Query Generator's PostgreSQL/MySQL output is generate-and-copy, not
+  validated — the app holds no connection to run either against, so
+  those dialect rules are prompt-level guidance, not a guarantee.
+► Windows-first: built and tested against SQL Server's Windows ODBC
+  drivers and a Windows (PyInstaller) packaging pipeline. Linux/macOS
+  have not been exercised.
 ```
 
 ---
@@ -140,6 +199,18 @@ pyodbc · pandas · matplotlib · SQL Server 2025 · Claude Code
 ```
 
 See `SETUP.md` for the full walkthrough.
+
+**Running from source instead of the packaged build:**
+```
+pip install -r requirements.txt
+
+# dev mode — needs `ollama serve` with qwen2.5-coder:7b pulled
+python main.py
+
+# offline mode — needs models/qwen2.5-coder-7b-instruct-q4_k_m.gguf
+# (see nl2sql/llm_backend.py for the exact filename/source)
+LLM_BACKEND=local python main.py
+```
 
 ---
 
