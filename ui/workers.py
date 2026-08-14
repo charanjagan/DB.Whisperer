@@ -26,6 +26,7 @@ from PySide6.QtCore import QThread, Signal
 from nl2sql import (
     build_schema_context,
     detect_chart_type,
+    explain_sql,
     generate_sql,
     generate_sql_with_retry,
     generate_summary,
@@ -37,9 +38,15 @@ from nl2sql.sql_executor import UnsafeQueryError
 
 
 class AssistantResult:
-    """What one Full Assistant run produced, for the window to display."""
+    """What one Full Assistant run produced, for the window to display.
 
-    def __init__(self, question, sql, df, chart_type, summary, tables, total_tables, seconds):
+    `explanation` is None unless the run was asked for one (the "Explain query"
+    toggle) -- None and "" both mean "no explanation panel", which is why the
+    panel keys off truthiness rather than off the attribute existing.
+    """
+
+    def __init__(self, question, sql, df, chart_type, summary, tables, total_tables, seconds,
+                 explanation=None):
         self.question = question
         self.sql = sql
         self.df: pd.DataFrame = df
@@ -48,6 +55,7 @@ class AssistantResult:
         self.tables: List[str] = tables
         self.total_tables = total_tables
         self.seconds = seconds
+        self.explanation: Optional[str] = explanation
 
 
 class _BaseWorker(QThread):
@@ -69,11 +77,15 @@ class AssistantWorker(_BaseWorker):
 
     done = Signal(object)  # AssistantResult
 
-    def __init__(self, session: Session, question: str, model: str = DEFAULT_MODEL, parent=None):
+    def __init__(self, session: Session, question: str, model: str = DEFAULT_MODEL,
+                 explain: bool = False, parent=None):
         super().__init__(parent)
         self.session = session
         self.question = question
         self.model = model
+        # Off unless the user asked: an explanation is a whole extra generation
+        # on a local 7B, which is tens of seconds added to every question.
+        self.explain = explain
 
     def run(self) -> None:
         import time
@@ -123,6 +135,21 @@ class AssistantWorker(_BaseWorker):
 
         chart_type = detect_chart_type(df)
 
+        # Explains the query that actually ran, which after a repair is not the
+        # one first generated -- explaining a rejected attempt would describe
+        # reasoning the user never saw the results of.
+        explanation = None
+        if self.explain:
+            self.progress.emit("Explaining the query…")
+            try:
+                explanation = explain_sql(
+                    self.question, sql, context.summary, model=self.model
+                )
+            except LLMError as exc:
+                # Same call as the summary below: a nicety that failed is not a
+                # reason to throw away a correct answer and a working chart.
+                explanation = f"(Could not explain this query: {exc})"
+
         self.progress.emit("Summarising the result…")
         try:
             summary = generate_summary(self.question, df, model=self.model)
@@ -141,6 +168,7 @@ class AssistantWorker(_BaseWorker):
                 tables=list(context.tables),
                 total_tables=context.total_tables,
                 seconds=time.time() - started,
+                explanation=explanation,
             )
         )
 

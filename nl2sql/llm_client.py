@@ -76,6 +76,52 @@ Write a different query that avoids that error. Do not repeat the rejected query
 ### SQL
 """
 
+# Asks for the reasoning behind *this* query rather than a description of what
+# the SQL does. Rules alone did not get there: told only to "explain the
+# reasoning, not the syntax, and keep it proportionate", the model walked the
+# statement clause by clause anyway ("The COUNT function counts the number of
+# non-NULL values...") and gave a single-table COUNT a *longer* answer than a
+# three-table join -- the exact inversion the length rule was meant to prevent.
+#
+# The two worked examples are what actually fixed it. They demonstrate the
+# contrast the rules only assert: a trivial query answered in two flat
+# sentences, and a complex one answered in terms of where the columns live
+# rather than what the keywords mean. Both examples use tables outside the
+# question this is likely to be asked about, so the model has to generalise the
+# shape rather than pattern-match the content.
+_EXPLAIN_TEMPLATE = """### Task
+Explain the reasoning behind a SQL query: the decisions it makes, not the syntax it uses.
+
+### Example 1
+Question: How many employees are there?
+SQL: SELECT COUNT(BusinessEntityID) AS NumberOfEmployees FROM HumanResources.Employee
+Explanation: One row per employee in HumanResources.Employee, so the answer is just the size of that table.
+
+### Example 2
+Question: Which product category sold the most in 2013?
+SQL: SELECT TOP 1 pc.Name, SUM(sod.LineTotal) AS Total FROM Sales.SalesOrderDetail sod JOIN Production.Product p ON p.ProductID = sod.ProductID JOIN Production.ProductSubcategory ps ON ps.ProductSubcategoryID = p.ProductSubcategoryID JOIN Production.ProductCategory pc ON pc.ProductCategoryID = ps.ProductCategoryID JOIN Sales.SalesOrderHeader soh ON soh.SalesOrderID = sod.SalesOrderID WHERE YEAR(soh.OrderDate) = 2013 GROUP BY pc.Name ORDER BY Total DESC
+Explanation: The money sits on the order detail lines but category is three tables away, so the path out runs through Product and ProductSubcategory. SalesOrderHeader is only there because the order date lives on the header, not the line.
+
+### Database Schema
+{schema}
+
+### Question
+{question}
+
+### SQL
+{sql}
+
+### Rules
+- Say why the query is shaped this way: why these tables, why this filter, why grouped or ordered so.
+- Do not narrate the query clause by clause. Skip anything obvious from reading it.
+- Never name or describe a SQL function or keyword. Writing "the COUNT function counts non-NULL
+  values" or "the JOIN combines rows" is exactly wrong -- the reader writes SQL every day.
+- A simple query gets one sentence. Only a genuinely complicated one earns three.
+- Plain prose. No bullet points, no markdown, no code fences, no headings.
+
+### Explanation (reasoning only, 1-3 sentences, no clause-by-clause narration)
+"""
+
 _FENCE_RE = re.compile(r"^```[a-zA-Z]*\s*|\s*```$")
 
 # The model routinely restates the question as a title before the statement:
@@ -202,6 +248,48 @@ def repair_sql(
     if not fixed:
         raise LLMError("Model returned an empty response while repairing SQL.")
     return fixed
+
+
+def explain_sql(
+    question: str,
+    sql: str,
+    schema_summary: str,
+    model: str = DEFAULT_MODEL,
+    url: str = OLLAMA_URL,
+    timeout: int = 300,
+    temperature: float = 0.0,
+) -> str:
+    """Explain why `sql` answers `question` the way it does. 2-4 sentences.
+
+    An optional extra model call, off by default in the UI: it costs another
+    full generation (tens of seconds on a local 7B) and buys nothing for a user
+    who can already read the query. See ui.main_window's "Explain query" toggle.
+
+    The schema goes in because the interesting half of the reasoning is about
+    relationships the SQL only implies -- a join through a table the question
+    never mentioned makes sense once the foreign keys are visible, and without
+    them the model guesses at why it joined what it joined.
+
+    Raises LLMError if the model returns nothing usable. Callers that already
+    have a working query and a chart should treat that as a missing nicety
+    rather than a failed run.
+    """
+    prompt = _EXPLAIN_TEMPLATE.format(
+        schema=schema_summary, question=question, sql=sql
+    )
+    text = complete(
+        prompt, model=model, url=url, timeout=timeout, temperature=temperature
+    ).strip()
+
+    # Same tic as the summary prompt: the model opens with the label it was
+    # given as a section heading, despite being asked for prose only.
+    for prefix in ("Explanation:", "explanation:", "Answer:", "Reasoning:"):
+        if text.startswith(prefix):
+            text = text[len(prefix) :].strip()
+
+    if not text:
+        raise LLMError("Model returned an empty explanation.")
+    return text
 
 
 # Leading "[42S22] [Microsoft][ODBC Driver 17 for SQL Server][SQL Server]" and a

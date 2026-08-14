@@ -114,9 +114,28 @@ def stylesheet() -> str:
         padding: 0 4px;
         color: {TEXT_PRIMARY};
     }}
-    QGroupBox::indicator {{
-        width: 16px;
-        height: 16px;
+    /* Checkable group boxes (Generated SQL, Why this query) and the "Explain
+       query" toggle. Styled together: left unstyled, Fusion draws both with its
+       own blue-violet highlight, which is the one colour on the window that
+       belongs to no part of this palette. A filled square reads as checked
+       without needing a tick glyph to embed. */
+    QGroupBox::indicator, QCheckBox::indicator {{
+        width: 15px;
+        height: 15px;
+        border: 1px solid {BORDER};
+        border-radius: 4px;
+        background-color: {CARD_BG};
+    }}
+    QGroupBox::indicator:hover, QCheckBox::indicator:hover {{
+        border: 1px solid {ACCENT_HOVER};
+    }}
+    QGroupBox::indicator:checked, QCheckBox::indicator:checked {{
+        background-color: {ACCENT};
+        border: 1px solid {ACCENT};
+    }}
+    QCheckBox::indicator:disabled {{
+        background-color: {CARD_BG_SECONDARY};
+        border: 1px solid {BORDER};
     }}
 
     QListWidget {{
@@ -250,6 +269,11 @@ def stylesheet() -> str:
     QRadioButton[role="pill"]::indicator {{
         width: 0px;
         height: 0px;
+        margin: 0px;
+        padding: 0px;
+        border: none;
+        background: transparent;
+        image: none;
     }}
     QRadioButton[role="pill"]:hover {{
         border: 1px solid {ACCENT_HOVER};

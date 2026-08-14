@@ -84,6 +84,26 @@ class AssistantPanel(QWidget):
         self.summary.setStyleSheet("font-size: 14px;")
         layout.addWidget(self.summary)
 
+        # --- why this query, folded away -------------------------------------
+        # Sits between the summary and the SQL on purpose: it is the bridge
+        # between "here is what the data says" and "here is the query that got
+        # it". Hidden entirely unless a run was asked to explain itself, so a
+        # user with the toggle off never sees an empty box.
+        self.explain_box = QGroupBox("Why this query")
+        self.explain_box.setCheckable(True)
+        self.explain_box.setChecked(True)
+        self.explain_box.toggled.connect(self._toggle_explain)
+        explain_layout = QVBoxLayout(self.explain_box)
+
+        self.explain_view = QLabel("")
+        self.explain_view.setWordWrap(True)
+        self.explain_view.setTextInteractionFlags(Qt.TextSelectableByMouse)
+        self.explain_view.setStyleSheet("font-size: 13px;")
+        explain_layout.addWidget(self.explain_view)
+
+        self.explain_box.hide()
+        layout.addWidget(self.explain_box)
+
         # --- the SQL, folded away --------------------------------------------
         self.sql_box = QGroupBox("Generated SQL")
         self.sql_box.setCheckable(True)
@@ -108,6 +128,25 @@ class AssistantPanel(QWidget):
     def _toggle_sql(self, shown: bool) -> None:
         self.sql_view.setVisible(shown)
         self.meta.setVisible(shown)
+
+    def _toggle_explain(self, shown: bool) -> None:
+        self.explain_view.setVisible(shown)
+
+    def set_explanation(self, text: Optional[str]) -> None:
+        """Show the reasoning panel, or hide it when there is nothing to show.
+
+        Expanded rather than collapsed when it does appear: a user who ticked
+        "Explain query" and waited the extra generation for it should not have
+        to click again to read the thing they asked for.
+        """
+        if not text:
+            self.explain_box.hide()
+            self.explain_view.clear()
+            return
+        self.explain_view.setText(text)
+        self.explain_box.setChecked(True)
+        self.explain_view.setVisible(True)
+        self.explain_box.show()
 
     # ------------------------------------------------------------------ state
 
@@ -136,6 +175,7 @@ class AssistantPanel(QWidget):
         self.sql_view.setPlainText("")
         self.meta.setText("")
         self.sql_box.setTitle("Generated SQL")
+        self.set_explanation(None)
         self._clear_canvas()
 
     def _clear_canvas(self) -> None:
@@ -154,6 +194,7 @@ class AssistantPanel(QWidget):
         self.status.setStyleSheet(f"color: {_MUTED};")
 
         self.summary.setText(result.summary)
+        self.set_explanation(result.explanation)
         self.sql_view.setPlainText(result.sql)
         self.sql_box.setTitle("Generated SQL")
         self.meta.setText(

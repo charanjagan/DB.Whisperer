@@ -1,0 +1,45 @@
+DB.Whisperer is installed.
+==========================
+
+IF YOU HAVE NOT INSTALLED THE SQL SERVER ODBC DRIVER YET, DO THAT NOW.
+The app will start without it, but it cannot connect to any database:
+
+  https://learn.microsoft.com/sql/connect/odbc/download-odbc-driver-for-sql-server
+
+Install "ODBC Driver 17 for SQL Server" or "ODBC Driver 18 for SQL Server".
+
+
+FIRST RUN
+---------
+1. Launch DB.Whisperer. It shows "Loading model..." for several seconds while
+   the bundled model loads -- once per app start, not per question.
+
+2. Open Settings. Enter your SQL Server name (for example "localhost"), choose
+   Windows or SQL authentication, and press Connect.
+
+3. Pick a database from the dropdown. The first time you pick one, the app
+   provisions a read-only login for itself on that database -- this needs your
+   connecting account to have rights to grant it (sysadmin, or securityadmin
+   plus db_owner). After that one-time step, every query runs as the read-only
+   login and can do nothing but SELECT.
+
+4. Type a question in plain English and press Run.
+
+
+TWO MODES
+---------
+Full Assistant   Writes SQL, runs it read-only, charts the result, and
+                 summarises it in a sentence. Tick "Explain query" to also
+                 get the reasoning behind the query it wrote -- this costs an
+                 extra generation, so it takes longer.
+
+Query Generator  Writes SQL only and never executes anything. Targets SQL
+                 Server, PostgreSQL, or MySQL, from a live schema or one you
+                 paste in.
+
+
+PRIVACY
+-------
+The language model runs in-process on your CPU. No API key, no cloud call, and
+nothing about your schema or your data leaves this machine. The only network
+connection the app makes is to your own SQL Server.

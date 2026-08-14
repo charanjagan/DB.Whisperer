@@ -21,6 +21,7 @@ from PySide6.QtCore import Qt
 from PySide6.QtGui import QAction, QKeySequence
 from PySide6.QtWidgets import (
     QButtonGroup,
+    QCheckBox,
     QHBoxLayout,
     QLabel,
     QListWidget,
@@ -173,6 +174,17 @@ class MainWindow(QMainWindow):
         self.status_label.setStyleSheet(f"color: {_MUTED}; font-size: 12px;")
         self.status_label.setWordWrap(True)
         run_row.addWidget(self.status_label, 1)
+
+        # Off by default: it is a second full generation on a local 7B, so it
+        # roughly doubles the wait for a user who did not ask for it. Full
+        # Assistant only -- Query Generator has no chosen-and-executed query to
+        # explain the reasoning of, so _mode_changed hides it there.
+        self.explain_check = QCheckBox("Explain query")
+        self.explain_check.setToolTip(
+            "Ask the model why it wrote this query. Adds another generation, so it takes longer."
+        )
+        run_row.addWidget(self.explain_check)
+
         self.run_button = QPushButton("Run")
         self.run_button.setMinimumWidth(110)
         self.run_button.setProperty("role", "primary")
@@ -221,6 +233,7 @@ class MainWindow(QMainWindow):
 
     def _mode_changed(self, index: int) -> None:
         self.stack.setCurrentIndex(index)
+        self.explain_check.setVisible(index == 0)
         if index == 0:
             self.mode_hint.setText(
                 "Generates SQL, runs it read-only against SQL Server, charts it, and summarises it."
@@ -344,7 +357,13 @@ class MainWindow(QMainWindow):
         self.assistant_panel.set_busy("Starting…")
         self._set_running(True)
 
-        worker = AssistantWorker(self.session, question, model=self.config.model, parent=self)
+        worker = AssistantWorker(
+            self.session,
+            question,
+            model=self.config.model,
+            explain=self.explain_check.isChecked(),
+            parent=self,
+        )
         worker.progress.connect(self.assistant_panel.set_progress)
         worker.done.connect(self.assistant_panel.show_result)
         worker.failed.connect(self.assistant_panel.set_error)
@@ -414,6 +433,9 @@ class MainWindow(QMainWindow):
         self.settings_button.setEnabled(not running)
         self.assistant_radio.setEnabled(not running)
         self.generator_radio.setEnabled(not running)
+        # The worker captured this flag when it started, so toggling it mid-run
+        # would change nothing while looking like it changed something.
+        self.explain_check.setEnabled(not running)
 
     # ----------------------------------------------------------------- history
 

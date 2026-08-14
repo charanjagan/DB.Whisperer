@@ -33,6 +33,15 @@ def main() -> int:
     if ICON_PATH.exists():
         app.setWindowIcon(QIcon(str(ICON_PATH)))
 
+    # Windows' default native style (windowsvista) partially ignores stylesheet
+    # overrides for its own natively-drawn controls -- most visibly, a radio
+    # button's indicator stays painted at its native size even with
+    # `::indicator { width: 0 }` set, because that style renders it through a
+    # native theme API rather than fully through Qt's stylesheet engine. Fusion
+    # is Qt's own cross-platform style and honours the stylesheet completely,
+    # which is what the pill-styled mode toggle in ui/theme.py depends on.
+    app.setStyle("Fusion")
+
     # Segoe UI is Windows' own system sans-serif; set directly rather than left
     # to the QSS font-family alone, since QFont is what Qt actually falls back
     # from if the name isn't found, and it applies to native bits (menus,

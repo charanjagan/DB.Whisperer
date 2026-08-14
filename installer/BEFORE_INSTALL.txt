@@ -1,0 +1,52 @@
+DB.Whisperer -- what you need before you start
+==============================================
+
+Almost everything is bundled: Python, the UI toolkit, and the offline language
+model (about 4.4 GB of the install size is that model file alone). No internet
+connection is needed to run the app once it is installed.
+
+Two things are NOT bundled, because they are system-level and an app folder
+should not install them for you.
+
+
+1. SQL SERVER ODBC DRIVER  --  REQUIRED
+---------------------------------------
+DB.Whisperer cannot connect to any database without this.
+
+Install "ODBC Driver 17 for SQL Server" or "ODBC Driver 18 for SQL Server"
+(either works) from:
+
+  https://learn.microsoft.com/sql/connect/odbc/download-odbc-driver-for-sql-server
+
+It is a one-time install, a few clicks, and no reboot on most systems. You can
+do this after installing DB.Whisperer -- but the app will not connect to
+anything until you do.
+
+
+2. A RUNNING SQL SERVER INSTANCE  --  REQUIRED
+----------------------------------------------
+DB.Whisperer connects to a SQL Server that already exists. It does not
+install, configure, or provision one.
+
+Before launching, make sure:
+
+  * SQL Server (Express, Developer, or full edition) is installed and running,
+    and reachable from this machine ("localhost" if it is on this machine).
+
+  * You know the server name and how you authenticate to it -- Windows
+    authentication or a SQL login. Both are entered in the app's Settings
+    dialog the first time you run it.
+
+If you do not have a SQL Server instance yet, SQL Server Express is free:
+
+  https://www.microsoft.com/sql-server/sql-server-downloads
+
+
+A NOTE ON FIRST LAUNCH
+----------------------
+The first thing the app does on startup is load the bundled language model
+into memory, showing "Loading model..." for several seconds. That is normal.
+It happens once per app start, not once per question.
+
+Answering a question takes roughly one to two minutes: the model runs on your
+CPU, locally, and nothing about your database is sent anywhere.

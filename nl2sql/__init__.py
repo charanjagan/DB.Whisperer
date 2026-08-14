@@ -35,6 +35,7 @@ from .schema_introspection import (
 from .llm_client import (
     LLMError,
     SQLRetryError,
+    explain_sql,
     generate_sql,
     generate_sql_with_retry,
     repair_sql,
@@ -75,6 +76,7 @@ __all__ = [
     "get_table_list",
     "LLMError",
     "SQLRetryError",
+    "explain_sql",
     "generate_sql",
     "generate_sql_with_retry",
     "repair_sql",
