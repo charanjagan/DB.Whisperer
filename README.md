@@ -210,6 +210,10 @@ python main.py
 # dev mode — needs `ollama serve` with qwen2.5-coder:7b pulled
 LLM_BACKEND=ollama python main.py           # bash
 $env:LLM_BACKEND="ollama"; python main.py   # PowerShell
+
+# tests — offline unit suite, no SQL Server or model needed
+pip install -r requirements-dev.txt
+python -m pytest
 ```
 
 ---

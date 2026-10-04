@@ -1,0 +1,8 @@
+# Runtime deps, plus what it takes to test and package from source.
+-r requirements.txt
+
+# Offline unit tests: `python -m pytest` (collects tests/ only, see pytest.ini).
+pytest>=9.0
+
+# Packaged build: `pyinstaller db_whisperer.spec --noconfirm`.
+pyinstaller>=6.0
