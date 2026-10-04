@@ -26,8 +26,13 @@ from ui.theme import stylesheet
 ICON_PATH = Path(__file__).resolve().parent / "assets" / "app_icon.ico"
 
 
-def main() -> int:
-    app = QApplication(sys.argv)
+def configure_app(app: QApplication) -> None:
+    """Name, icon, style, font and stylesheet: everything that makes the window look like the app.
+
+    Separate from main() so test_phase4.py drives a window dressed exactly as a
+    user sees it -- without this its screenshots show Qt's unstyled defaults
+    (dark, on a Windows machine in dark mode), not the theme being tested.
+    """
     app.setApplicationName("DB.Whisperer")
     app.setOrganizationName("DB.Whisperer")
     if ICON_PATH.exists():
@@ -48,6 +53,11 @@ def main() -> int:
     # dialogs) a stylesheet's font-family rule does not always reach.
     app.setFont(QFont("Segoe UI", 9))
     app.setStyleSheet(stylesheet())
+
+
+def main() -> int:
+    app = QApplication(sys.argv)
+    configure_app(app)
 
     window = MainWindow()
     window.show()

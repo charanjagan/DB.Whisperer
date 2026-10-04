@@ -23,14 +23,16 @@ from PySide6.QtWidgets import (
     QPlainTextEdit,
     QProgressBar,
     QPushButton,
-    QRadioButton,
     QStackedWidget,
     QVBoxLayout,
     QWidget,
 )
 
-_MUTED = "#8A8375"
-_ERROR = "#d03b3b"
+from .controls import SegmentedControl
+from .theme import ERROR, FONT_CAPTION, FONT_FOOTNOTE, TEXT_MUTED
+
+_MUTED = TEXT_MUTED
+_ERROR = ERROR
 
 # A schema far past this is mostly context the model cannot use anyway, and it
 # is usually a sign someone pasted a whole database dump rather than its DDL.
@@ -49,18 +51,17 @@ class GeneratorPanel(QWidget):
         layout.setContentsMargins(0, 0, 0, 0)
 
         # --- where the schema comes from --------------------------------------
+        # The same either/or shape as the window's mode toggle, so it gets the
+        # same control. Index 0 is the connected database, matching the order
+        # the stack below is built in.
         source_row = QHBoxLayout()
-        source_row.addWidget(QLabel("Schema:"))
-        self.use_connected = QRadioButton("Use connected database")
-        self.use_manual = QRadioButton("Paste or upload schema")
-        self.use_connected.setChecked(True)
-        self.use_connected.toggled.connect(self._source_changed)
-        source_row.addWidget(self.use_connected)
-        source_row.addWidget(self.use_manual)
+        self.source_toggle = SegmentedControl(["Connected database", "Paste or upload"])
+        self.source_toggle.currentChanged.connect(self._source_changed)
+        source_row.addWidget(self.source_toggle)
         source_row.addStretch(1)
 
         self.dialect_label = QLabel("")
-        self.dialect_label.setStyleSheet(f"color: {_MUTED}; font-size: 12px;")
+        self.dialect_label.setStyleSheet(f"color: {_MUTED}; font-size: {FONT_FOOTNOTE}px;")
         source_row.addWidget(self.dialect_label)
         layout.addLayout(source_row)
 
@@ -87,9 +88,12 @@ class GeneratorPanel(QWidget):
         manual_layout = QVBoxLayout(manual)
         manual_layout.setContentsMargins(0, 0, 0, 0)
         manual_row = QHBoxLayout()
-        manual_row.addWidget(QLabel("Paste CREATE TABLE statements, or describe the tables:"))
+        manual_header = QLabel("Paste CREATE TABLE statements, or describe the tables")
+        manual_header.setProperty("role", "sectionHeader")
+        manual_row.addWidget(manual_header)
         manual_row.addStretch(1)
         self.load_file_button = QPushButton("Load .sql file…")
+        self.load_file_button.setProperty("role", "plain")
         self.load_file_button.clicked.connect(self._load_file)
         manual_row.addWidget(self.load_file_button)
         manual_layout.addLayout(manual_row)
@@ -123,9 +127,12 @@ class GeneratorPanel(QWidget):
 
         # --- the output -------------------------------------------------------
         output_row = QHBoxLayout()
-        output_row.addWidget(QLabel("Generated SQL"))
+        output_header = QLabel("Generated SQL")
+        output_header.setProperty("role", "sectionHeader")
+        output_row.addWidget(output_header)
         output_row.addStretch(1)
         self.copy_button = QPushButton("Copy")
+        self.copy_button.setProperty("role", "plain")
         self.copy_button.setEnabled(False)
         self.copy_button.clicked.connect(self._copy)
         output_row.addWidget(self.copy_button)
@@ -139,13 +146,20 @@ class GeneratorPanel(QWidget):
         layout.addWidget(self.sql_output)
 
         note = QLabel("This mode only writes SQL. Nothing here is executed against any database.")
-        note.setStyleSheet(f"color: {_MUTED}; font-size: 11px;")
+        note.setStyleSheet(f"color: {_MUTED}; font-size: {FONT_CAPTION}px;")
         layout.addWidget(note)
 
     # ------------------------------------------------------------------ source
 
-    def _source_changed(self) -> None:
-        connected = self.use_connected.isChecked()
+    def uses_connected_schema(self) -> bool:
+        """True when the schema should come from the live database."""
+        return self.source_toggle.currentIndex() == 0
+
+    def set_uses_connected_schema(self, connected: bool) -> None:
+        self.source_toggle.setCurrentIndex(0 if connected else 1)
+
+    def _source_changed(self, _index: int = 0) -> None:
+        connected = self.uses_connected_schema()
         self.source_stack.setCurrentIndex(0 if connected else 1)
         if connected and not self.schema_preview.toPlainText():
             self.schema_requested.emit()
@@ -179,7 +193,7 @@ class GeneratorPanel(QWidget):
         self.status.setText(f"Loaded {Path(path).name} ({len(text):,} characters).")
 
     def schema_text(self) -> str:
-        if self.use_connected.isChecked():
+        if self.uses_connected_schema():
             return self.schema_preview.toPlainText().strip()
         return self.schema_input.toPlainText().strip()
 

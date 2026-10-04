@@ -35,7 +35,10 @@ from nl2sql.app_config import AppConfig, config_path
 from nl2sql.dialects import DIALECTS
 from nl2sql.session import Session
 
+from .theme import ERROR, FONT_CAPTION, FONT_FOOTNOTE, TEXT_MUTED, TEXT_PRIMARY
 from .workers import ConnectWorker, SelectDatabaseWorker
+
+_NOTE = f"color: {TEXT_MUTED}; font-size: {FONT_CAPTION}px;"
 
 
 class SettingsDialog(QDialog):
@@ -67,7 +70,7 @@ class SettingsDialog(QDialog):
 
         hint = QLabel(f"Settings are saved to {config_path()}")
         hint.setWordWrap(True)
-        hint.setStyleSheet("color: #8A8375; font-size: 11px;")
+        hint.setStyleSheet(_NOTE)
         layout.addWidget(hint)
 
         buttons = QDialogButtonBox(QDialogButtonBox.Ok | QDialogButtonBox.Cancel)
@@ -104,7 +107,7 @@ class SettingsDialog(QDialog):
         # keeping it that way means it needs no protection beyond the filesystem.
         note = QLabel("The password is kept for this session only and is never written to the config file.")
         note.setWordWrap(True)
-        note.setStyleSheet("color: #8A8375; font-size: 11px;")
+        note.setStyleSheet(_NOTE)
         form.addRow("", note)
 
         self.connect_button = QPushButton("Connect")
@@ -129,7 +132,7 @@ class SettingsDialog(QDialog):
             "Queries never run as your admin login."
         )
         note.setWordWrap(True)
-        note.setStyleSheet("color: #8A8375; font-size: 11px;")
+        note.setStyleSheet(_NOTE)
         box.addWidget(note)
         return group
 
@@ -147,7 +150,7 @@ class SettingsDialog(QDialog):
             "because it executes what it generates."
         )
         note.setWordWrap(True)
-        note.setStyleSheet("color: #8A8375; font-size: 11px;")
+        note.setStyleSheet(_NOTE)
         box.addWidget(note)
         return group
 
@@ -198,7 +201,9 @@ class SettingsDialog(QDialog):
     def _say(self, message: str, error: bool = False) -> None:
         self.status.setText(message)
         self.status.setStyleSheet(
-            "color: #d03b3b; font-size: 12px;" if error else "color: #3A3530; font-size: 12px;"
+            f"color: {ERROR}; font-size: {FONT_FOOTNOTE}px;"
+            if error
+            else f"color: {TEXT_PRIMARY}; font-size: {FONT_FOOTNOTE}px;"
         )
 
     # --------------------------------------------------------------- actions

@@ -20,8 +20,6 @@ from typing import List, NamedTuple, Optional
 from PySide6.QtCore import Qt
 from PySide6.QtGui import QAction, QKeySequence
 from PySide6.QtWidgets import (
-    QButtonGroup,
-    QCheckBox,
     QHBoxLayout,
     QLabel,
     QListWidget,
@@ -30,7 +28,6 @@ from PySide6.QtWidgets import (
     QMessageBox,
     QPlainTextEdit,
     QPushButton,
-    QRadioButton,
     QSplitter,
     QStackedWidget,
     QVBoxLayout,
@@ -42,14 +39,16 @@ from nl2sql.dialects import get_dialect
 from nl2sql.session import Session
 
 from .assistant_panel import AssistantPanel
+from .controls import SegmentedControl, ToggleSwitch
 from .generator_panel import GeneratorPanel
 from .settings_dialog import SettingsDialog
+from .theme import FONT_CAPTION, FONT_FOOTNOTE, TEXT_MUTED
 from .workers import AssistantWorker, GeneratorWorker, ModelLoadWorker, SchemaFetchWorker
 
 MODE_ASSISTANT = "Full Assistant"
 MODE_GENERATOR = "Query Generator"
 
-_MUTED = "#8A8375"
+_MUTED = TEXT_MUTED
 
 
 class HistoryEntry(NamedTuple):
@@ -117,7 +116,7 @@ class MainWindow(QMainWindow):
         layout.setContentsMargins(0, 0, 6, 0)
 
         header = QLabel("History")
-        header.setStyleSheet("font-weight: 600; padding: 2px;")
+        header.setProperty("role", "sectionHeader")
         layout.addWidget(header)
 
         self.history_list = QListWidget()
@@ -128,7 +127,7 @@ class MainWindow(QMainWindow):
         layout.addWidget(self.history_list, 1)
 
         hint = QLabel("Click to reuse a question.\nThis session only.")
-        hint.setStyleSheet(f"color: {_MUTED}; font-size: 11px;")
+        hint.setStyleSheet(f"color: {_MUTED}; font-size: {FONT_CAPTION}px;")
         layout.addWidget(hint)
         return panel
 
@@ -138,29 +137,24 @@ class MainWindow(QMainWindow):
         layout.setContentsMargins(0, 0, 0, 0)
 
         # --- mode toggle ------------------------------------------------------
+        # One segmented control rather than two pill buttons: the two modes are
+        # a single either/or choice, and a segmented control is the shape iOS
+        # gives that. It emits on a programmatic set as well as on a click, so
+        # nothing has to call _mode_changed by hand any more.
         mode_row = QHBoxLayout()
-        self.assistant_radio = QRadioButton(MODE_ASSISTANT)
-        self.generator_radio = QRadioButton(MODE_GENERATOR)
-        # Rendered as pill buttons rather than radio dots -- see ui/theme.py's
-        # stylesheet(). Must be set before the widget is first shown.
-        self.assistant_radio.setProperty("role", "pill")
-        self.generator_radio.setProperty("role", "pill")
-        self.assistant_radio.setChecked(True)
-        self.mode_group = QButtonGroup(self)
-        self.mode_group.addButton(self.assistant_radio, 0)
-        self.mode_group.addButton(self.generator_radio, 1)
-        self.mode_group.idClicked.connect(self._mode_changed)
-        mode_row.addWidget(self.assistant_radio)
-        mode_row.addWidget(self.generator_radio)
+        self.mode_toggle = SegmentedControl([MODE_ASSISTANT, MODE_GENERATOR])
+        self.mode_toggle.currentChanged.connect(self._mode_changed)
+        mode_row.addWidget(self.mode_toggle)
         mode_row.addStretch(1)
 
         self.settings_button = QPushButton("⚙  Settings")
+        self.settings_button.setProperty("role", "plain")
         self.settings_button.clicked.connect(self.open_settings)
         mode_row.addWidget(self.settings_button)
         layout.addLayout(mode_row)
 
         self.mode_hint = QLabel("")
-        self.mode_hint.setStyleSheet(f"color: {_MUTED}; font-size: 11px;")
+        self.mode_hint.setStyleSheet(f"color: {_MUTED}; font-size: {FONT_FOOTNOTE}px;")
         layout.addWidget(self.mode_hint)
 
         # --- question ---------------------------------------------------------
@@ -170,8 +164,9 @@ class MainWindow(QMainWindow):
         layout.addWidget(self.question_input)
 
         run_row = QHBoxLayout()
+        run_row.setSpacing(14)
         self.status_label = QLabel("")
-        self.status_label.setStyleSheet(f"color: {_MUTED}; font-size: 12px;")
+        self.status_label.setStyleSheet(f"color: {_MUTED}; font-size: {FONT_FOOTNOTE}px;")
         self.status_label.setWordWrap(True)
         run_row.addWidget(self.status_label, 1)
 
@@ -179,7 +174,7 @@ class MainWindow(QMainWindow):
         # roughly doubles the wait for a user who did not ask for it. Full
         # Assistant only -- Query Generator has no chosen-and-executed query to
         # explain the reasoning of, so _mode_changed hides it there.
-        self.explain_check = QCheckBox("Explain query")
+        self.explain_check = ToggleSwitch("Explain query")
         self.explain_check.setToolTip(
             "Ask the model why it wrote this query. Adds another generation, so it takes longer."
         )
@@ -229,7 +224,7 @@ class MainWindow(QMainWindow):
 
     @property
     def mode(self) -> str:
-        return MODE_ASSISTANT if self.assistant_radio.isChecked() else MODE_GENERATOR
+        return MODE_ASSISTANT if self.mode_toggle.currentIndex() == 0 else MODE_GENERATOR
 
     def _mode_changed(self, index: int) -> None:
         self.stack.setCurrentIndex(index)
@@ -245,7 +240,7 @@ class MainWindow(QMainWindow):
             )
             self.run_button.setText("Generate")
             self._sync_dialect_label()
-            if self.generator_panel.use_connected.isChecked():
+            if self.generator_panel.uses_connected_schema():
                 self._fetch_schema()
 
     def _sync_dialect_label(self) -> None:
@@ -270,7 +265,7 @@ class MainWindow(QMainWindow):
 
         self._sync_dialect_label()
         self._update_status()
-        if self.mode == MODE_GENERATOR and self.generator_panel.use_connected.isChecked():
+        if self.mode == MODE_GENERATOR and self.generator_panel.uses_connected_schema():
             self._fetch_schema()
 
     # ------------------------------------------------------------- model load
@@ -376,7 +371,7 @@ class MainWindow(QMainWindow):
         if not schema:
             self.generator_panel.set_error(
                 "No schema to work from. Connect a database, or paste one in."
-                if self.generator_panel.use_connected.isChecked()
+                if self.generator_panel.uses_connected_schema()
                 else "Paste a schema, or load a .sql file, first."
             )
             return
@@ -431,8 +426,7 @@ class MainWindow(QMainWindow):
             "Working…" if running else ("Run" if self.mode == MODE_ASSISTANT else "Generate")
         )
         self.settings_button.setEnabled(not running)
-        self.assistant_radio.setEnabled(not running)
-        self.generator_radio.setEnabled(not running)
+        self.mode_toggle.setEnabled(not running)
         # The worker captured this flag when it started, so toggling it mid-run
         # would change nothing while looking like it changed something.
         self.explain_check.setEnabled(not running)

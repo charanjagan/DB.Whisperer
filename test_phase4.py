@@ -139,8 +139,7 @@ def test_assistant(window, database, question):
     passed = check("database opened", window.session.ready, grant.describe())
     window._update_status()
 
-    window.assistant_radio.setChecked(True)
-    window._mode_changed(0)
+    window.mode_toggle.setCurrentIndex(0)
     window.question_input.setPlainText(question)
     name = f"assistant_{database.replace(' ', '_')}_{_slug(question)}"
 
@@ -180,9 +179,8 @@ def test_assistant(window, database, question):
 def test_generator_connected(window):
     rule("Query Generator — connected database schema")
 
-    window.generator_radio.setChecked(True)
-    window._mode_changed(1)
-    window.generator_panel.use_connected.setChecked(True)
+    window.mode_toggle.setCurrentIndex(1)
+    window.generator_panel.set_uses_connected_schema(True)
     window._fetch_schema()
     if not wait_for_worker(window):
         return check("schema fetched", False, "timed out")
@@ -207,9 +205,8 @@ def test_generator_dialects(window):
     """The paste path, with no connection involved, across all three dialects."""
     rule("Query Generator — pasted schema, dialect switching")
 
-    window.generator_radio.setChecked(True)
-    window._mode_changed(1)
-    window.generator_panel.use_manual.setChecked(True)
+    window.mode_toggle.setCurrentIndex(1)
+    window.generator_panel.set_uses_connected_schema(False)
     window.generator_panel.schema_input.setPlainText(PASTED_SCHEMA)
     window.question_input.setPlainText(GENERATOR_QUESTION)
 
@@ -285,7 +282,12 @@ def main():
 
     app = QApplication(sys.argv)
 
+    # Same style, font and stylesheet main.py applies, so the screenshots show
+    # the app as a user sees it rather than Qt's unstyled defaults.
+    from main import configure_app
     from ui import MainWindow
+
+    configure_app(app)
 
     window = MainWindow()
     # A throwaway config: this test must not clobber real saved settings.
