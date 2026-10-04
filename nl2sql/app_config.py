@@ -118,8 +118,16 @@ def load_config(path: Optional[Path] = None) -> AppConfig:
     target = path or config_path()
     try:
         with open(target, "r", encoding="utf-8") as handle:
-            return AppConfig.from_dict(json.load(handle))
-    except (OSError, json.JSONDecodeError, TypeError, ValueError):
+            data = json.load(handle)
+    except (OSError, json.JSONDecodeError, ValueError):
+        return AppConfig()
+    # Valid JSON is not necessarily an object: a file holding [] or "x" parses
+    # fine and would otherwise crash from_dict, and with it the app's startup.
+    if not isinstance(data, dict):
+        return AppConfig()
+    try:
+        return AppConfig.from_dict(data)
+    except (TypeError, ValueError):
         return AppConfig()
 
 
