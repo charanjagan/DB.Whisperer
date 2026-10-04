@@ -204,12 +204,29 @@ See `SETUP.md` for the full walkthrough.
 ```
 pip install -r requirements.txt
 
-# dev mode — needs `ollama serve` with qwen2.5-coder:7b pulled
+# default (offline) — needs the GGUF model in models/, see "Local model" below
 python main.py
 
-# offline mode — needs models/qwen2.5-coder-7b-instruct-q4_k_m.gguf
-# (see nl2sql/llm_backend.py for the exact filename/source)
-LLM_BACKEND=local python main.py
+# dev mode — needs `ollama serve` with qwen2.5-coder:7b pulled
+LLM_BACKEND=ollama python main.py           # bash
+$env:LLM_BACKEND="ollama"; python main.py   # PowerShell
+```
+
+---
+
+## 🧩 Local model
+
+```
+The default backend (LLM_BACKEND=local) loads one GGUF file in-process
+via llama-cpp-python. It is not in git (~4.4GB), so fetch it once:
+
+  repo:  https://huggingface.co/Qwen/Qwen2.5-Coder-7B-Instruct-GGUF
+  file:  qwen2.5-coder-7b-instruct-q4_k_m.gguf   (4,683,073,536 bytes)
+  put:   models/qwen2.5-coder-7b-instruct-q4_k_m.gguf
+
+The filename must match exactly — it is pinned in nl2sql/llm_backend.py
+(DEFAULT_LOCAL_MODEL_FILENAME) and db_whisperer.spec. The packaged
+build already bundles it; this is only needed to run or build from source.
 ```
 
 ---
