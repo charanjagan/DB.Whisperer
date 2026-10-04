@@ -193,6 +193,10 @@ class AssistantPanel(QWidget):
         sql_layout.addWidget(self.sql_view)
 
         self.meta = QLabel("")
+        # Must wrap: it lists every table in context, and unwrapped a long list
+        # sets the minimum width of everything in the scroll area -- the summary
+        # then lays out on one line and the chart runs off the right edge.
+        self.meta.setWordWrap(True)
         self.meta.setStyleSheet(f"color: {_MUTED}; font-size: {FONT_CAPTION}px;")
         sql_layout.addWidget(self.meta)
 
