@@ -47,7 +47,9 @@ from .summary_generator import SummaryError, generate_summary
 from .app_config import AppConfig, config_path, load_config, save_config
 from .session import Session, SessionError
 
-__version__ = "0.4.0"
+# Keep in step with AppVersion in installer/db_whisperer.iss (and the setup
+# filenames in installer/SHARE_README.txt) when cutting a release.
+__version__ = "1.0.0"
 
 __all__ = [
     "SqlServerConfig",

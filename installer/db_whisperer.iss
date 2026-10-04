@@ -30,6 +30,7 @@
 ;    download step and no account.
 
 #define AppName "DB.Whisperer"
+; Keep in step with nl2sql.__version__ (nl2sql/__init__.py).
 #define AppVersion "1.0.0"
 #define AppPublisher "Charan Jagan"
 #define AppURL "https://github.com/charanjagan/DB.Whisperer"
