@@ -325,8 +325,13 @@ class AssistantPanel(QWidget):
 
     def show_result(self, result: AssistantResult) -> None:
         self.spinner.hide()
+        # run_query stops at its row cap; say so rather than let the count read
+        # as the size of the whole answer.
+        rows = f"{len(result.df):,} rows"
+        if result.df.attrs.get("truncated"):
+            rows = f"First {len(result.df):,} rows (result capped)"
         self.status.setText(
-            f"{len(result.df):,} rows × {len(result.df.columns)} columns · "
+            f"{rows} × {len(result.df.columns)} columns · "
             f"{result.chart_type.replace('_', ' ')} · {result.seconds:.1f}s"
         )
         self.status.setStyleSheet(f"color: {_MUTED};")

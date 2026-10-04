@@ -67,9 +67,15 @@ def format_result_for_prompt(
         text = shown.to_string(index=False)
 
     notes = []
+    # A result run_query cut at its row cap has more rows than len(df). Saying
+    # "of 10,000 rows" there would be the same false total the note below
+    # exists to prevent, so the count is stated as a floor instead.
+    total = (
+        f"more than {len(df):,}" if df.attrs.get("truncated") else f"{len(df):,}"
+    )
     if len(df) > len(shown):
         notes.append(
-            f"showing the first {len(shown)} of {len(df):,} rows"
+            f"showing the first {len(shown)} of {total} rows"
         )
     if len(df.columns) > len(shown.columns):
         notes.append(
