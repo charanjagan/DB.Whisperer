@@ -2,8 +2,9 @@
 
     python main.py
 
-Needs a local Ollama running (`ollama serve`) with the model in settings pulled,
-and, for Full Assistant mode, a reachable SQL Server. Query Generator mode with a
+By default the model runs in-process from models/*.gguf (see README.md, "Local
+model"); set LLM_BACKEND=ollama to use a running `ollama serve` instead. Full
+Assistant mode also needs a reachable SQL Server. Query Generator mode with a
 pasted schema needs neither a server nor a database.
 """
 

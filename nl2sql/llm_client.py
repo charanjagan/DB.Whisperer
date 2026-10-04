@@ -132,7 +132,7 @@ _SQL_START_RE = re.compile(r"\b(?:SELECT|WITH)\b", re.IGNORECASE)
 
 
 class LLMError(RuntimeError):
-    """Raised when Ollama is unreachable or returns an unusable response."""
+    """Raised when the model backend fails or returns an unusable response."""
 
 
 class SQLRetryError(RuntimeError):

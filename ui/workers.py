@@ -1,7 +1,7 @@
 """Background threads for the two pipelines.
 
-Every one of these runs a local 7B model over Ollama, which takes tens of
-seconds. On the GUI thread that is not a slow app, it is a hung one: Windows
+Every one of these runs a local 7B model (in-process GGUF, or Ollama in
+development), which takes tens of seconds. On the GUI thread that is not a slow app, it is a hung one: Windows
 greys the title bar out and offers to kill it. So each pipeline runs in a
 QThread and reports back with signals, and the window only ever touches widgets
 on the main thread.
